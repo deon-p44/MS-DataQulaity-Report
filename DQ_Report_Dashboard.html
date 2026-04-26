@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DQ Report — project44</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --blue: #0052CC; --dark: #1a1a2e; --accent: #00B8D9; --green: #36B37E;
+  --orange: #FF991F; --red: #FF5630; --purple: #6554C0;
+  --bg: #f4f5f7; --card: #ffffff; --text: #172B4D; --muted: #6B778C; --border: #DFE1E6;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);}
+
+#uploadPage{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--dark) 0%,var(--blue) 100%);}
+.upload-card{background:white;border-radius:20px;padding:48px 56px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.2);max-width:520px;width:90%;}
+.upload-card h1{font-size:24px;color:var(--dark);margin-bottom:6px;}
+.upload-card .sub{color:var(--muted);font-size:14px;margin-bottom:28px;}
+.upload-card .logo{font-size:13px;color:var(--blue);font-weight:700;letter-spacing:1px;margin-bottom:24px;}
+.drop-zone{border:2px dashed var(--blue);border-radius:14px;padding:40px 20px;cursor:pointer;transition:all 0.2s;margin-bottom:16px;}
+.drop-zone:hover,.drop-zone.dragover{background:#E6F0FF;border-color:var(--accent);}
+.drop-zone .icon{font-size:42px;margin-bottom:12px;}
+.drop-zone p{color:var(--muted);font-size:14px;}
+.drop-zone .browse{color:var(--blue);font-weight:600;text-decoration:underline;cursor:pointer;}
+#uploadMsg{font-size:13px;min-height:20px;margin-top:12px;}
+.upload-footer{margin-top:24px;font-size:11px;color:var(--muted);}
+
+#dashPage{display:none;}
+.header{background:linear-gradient(135deg,var(--dark) 0%,var(--blue) 100%);color:white;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;}
+.header h1{font-size:20px;font-weight:600;}
+.header .sub{font-size:12px;opacity:0.8;margin-top:2px;}
+.header .badges{display:flex;gap:8px;align-items:center;}
+.badge{background:rgba(255,255,255,0.15);padding:5px 12px;border-radius:16px;font-size:11px;}
+.btn-sm{padding:5px 12px;background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);border-radius:8px;font-size:11px;cursor:pointer;}
+
+.tabs{display:flex;background:white;border-bottom:2px solid var(--border);padding:0 32px;position:sticky;top:0;z-index:100;}
+.tab{padding:12px 22px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);border-bottom:3px solid transparent;transition:all 0.2s;}
+.tab:hover{color:var(--blue);}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+
+.filter-bar{background:white;padding:10px 32px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border);position:sticky;top:47px;z-index:99;}
+.filter-bar label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+.filter-bar select{padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;min-width:160px;background:white;}
+.filter-bar .filter-count{font-size:11px;color:var(--blue);font-weight:600;margin-left:auto;}
+.filter-bar .reset-btn{padding:5px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:11px;cursor:pointer;color:var(--muted);}
+.filter-bar .reset-btn:hover{background:#E6F0FF;color:var(--blue);}
+
+.tab-content{display:none;padding:20px 32px;}
+.tab-content.active{display:block;}
+
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px;}
+.kpi{background:var(--card);border-radius:10px;padding:16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid var(--border);}
+.kpi .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.kpi .val{font-size:28px;font-weight:700;}
+.kpi .sub{font-size:11px;color:var(--muted);margin-top:3px;}
+.kpi.blue .val{color:var(--blue);} .kpi.green .val{color:var(--green);}
+.kpi.orange .val{color:var(--orange);} .kpi.red .val{color:var(--red);}
+
+.card{background:var(--card);border-radius:10px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid var(--border);}
+.card h3{font-size:15px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.chart-box{position:relative;height:340px;}
+
+.scroll-wrap{max-height:500px;overflow:auto;border-radius:8px;border:1px solid var(--border);}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;}
+th{background:var(--dark);color:white;padding:8px 10px;text-align:left;font-weight:500;font-size:11px;white-space:nowrap;position:sticky;top:0;z-index:10;}
+td{padding:7px 10px;border-bottom:1px solid var(--border);}
+tr:hover{background:#f0f4ff;}
+.num{text-align:right;font-variant-numeric:tabular-nums;}
+.total-row{background:#E3F2FD;font-weight:700;}
+.subtotal-row{background:#F5F5F5;font-weight:600;font-size:11px;}
+
+.pivot-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px;}
+.pivot-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+
+.footer{text-align:center;padding:16px;color:var(--muted);font-size:11px;}
+
+@media(max-width:1000px){.kpi-row{grid-template-columns:repeat(2,1fr);}.chart-row,.pivot-grid,.pivot-grid-2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- ============ PAGE 1: UPLOAD ============ -->
+<div id="uploadPage">
+  <div class="upload-card">
+    <div class="logo">project44 — DATA QUALITY</div>
+    <h1>Upload DQ Report</h1>
+    <p class="sub">Drop or browse your weekly DQ Excel file to generate the report</p>
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileIn').click()">
+      <div class="icon">📊</div>
+      <p>Drag & drop .xlsx file here<br>or <span class="browse">browse files</span></p>
+    </div>
+    <input type="file" id="fileIn" accept=".xlsx,.xls" style="display:none" onchange="processFile(this.files[0])">
+    <div id="uploadMsg"></div>
+    <div class="upload-footer">Supports raw DQ export or processed Power Query files</div>
+  </div>
+</div>
+
+<!-- ============ PAGE 2: DASHBOARD ============ -->
+<div id="dashPage">
+  <div class="header">
+    <div><h1 id="hTitle">DQ Report</h1><div class="sub" id="hSub">Data Quality & Tracking Analysis</div></div>
+    <div class="badges">
+      <div class="badge" id="hPeriod"></div>
+      <div class="badge" id="hCount"></div>
+      <button class="btn-sm" onclick="location.reload()">Upload New File</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab(0)">Tracking Data</div>
+    <div class="tab" onclick="switchTab(1)">Milestone Analysis</div>
+    <div class="tab" onclick="switchTab(2)">Process Data</div>
+  </div>
+
+  <!-- GLOBAL FILTERS -->
+  <div class="filter-bar">
+    <label>Carrier:</label>
+    <select id="gfCarrier" onchange="applyFilters()"></select>
+    <label>Tracked:</label>
+    <select id="gfTracked" onchange="applyFilters()"></select>
+    <label>Milestone:</label>
+    <select id="gfMilestone" onchange="applyFilters()"></select>
+    <button class="reset-btn" onclick="resetFilters()">Reset Filters</button>
+    <button class="reset-btn" onclick="exportAll()" style="background:var(--blue);color:white;border-color:var(--blue);">Export All (.xlsx)</button>
+    <span class="filter-count" id="filterCount"></span>
+  </div>
+
+  <!-- TAB 1 -->
+  <div class="tab-content active" id="tab0">
+    <div class="kpi-row">
+      <div class="kpi blue"><div class="label">Total Shipments</div><div class="val" id="kTotal">--</div></div>
+      <div class="kpi green"><div class="label">Tracked %</div><div class="val" id="kTPct">--</div><div class="sub" id="kTSub"></div></div>
+      <div class="kpi green"><div class="label">Full Tracked</div><div class="val" id="kFull">--</div><div class="sub" id="kFullS"></div></div>
+      <div class="kpi orange"><div class="label">Partial Tracked</div><div class="val" id="kPart">--</div><div class="sub" id="kPartS"></div></div>
+      <div class="kpi red"><div class="label">Untracked</div><div class="val" id="kUnt">--</div><div class="sub" id="kUntS"></div></div>
+    </div>
+    <div class="chart-row">
+      <div class="card"><h3><span class="dot" style="background:var(--accent)"></span>Tracked vs Untracked</h3><div class="chart-box"><canvas id="cDonut1"></canvas></div></div>
+      <div class="card"><h3><span class="dot" style="background:var(--blue)"></span>DQ-Tracking Summary</h3><div class="chart-box"><canvas id="cBar1"></canvas></div></div>
+    </div>
+    <div class="card"><h3><span class="dot" style="background:var(--green)"></span>Carrier-wise Tracking</h3><div class="scroll-wrap" id="carrierTable"></div></div>
+  </div>
+
+  <!-- TAB 2 -->
+  <div class="tab-content" id="tab1">
+    <div class="card"><h3><span class="dot" style="background:var(--purple)"></span>Carrier-wise Milestone Analysis</h3><div class="scroll-wrap" id="msTable"></div></div>
+    <div class="card"><h3><span class="dot" style="background:var(--orange)"></span>Milestone Chart</h3><div class="chart-box" style="height:400px;"><canvas id="cMs"></canvas></div></div>
+    <div class="card"><h3><span class="dot" style="background:var(--accent)"></span>Carrier-Lane Distribution</h3><div class="scroll-wrap" id="laneTable"></div></div>
+  </div>
+
+  <!-- TAB 3 -->
+  <div class="tab-content" id="tab2">
+    <div class="pivot-grid" id="pivotRow1"></div>
+    <div class="pivot-grid-2" id="pivotRow2"></div>
+    <div class="card" id="pivotLane"></div>
+    <div class="card">
+      <h3><span class="dot" style="background:var(--blue)"></span>Process Data — Full Table</h3>
+      <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;">
+        <input type="text" id="searchBox" placeholder="Search within table..." onkeyup="filterProcessTable()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;width:280px;">
+        <button onclick="exportCSV()" style="padding:7px 16px;background:var(--blue);color:white;border:none;border-radius:8px;font-size:12px;cursor:pointer;">Export CSV</button>
+      </div>
+      <div class="scroll-wrap" style="max-height:600px;" id="processWrap"></div>
+    </div>
+  </div>
+
+  <div class="footer">DQ Report — project44 — Ready for Streamlit / GitHub Pages</div>
+</div>
+
+<script>
+// ===== GLOBAL STATE =====
+var _allData=[];
+var _fileName='';
+var _sheetName='';
+var _customerName='';
+var _charts={};
+
+// ===== TAB SWITCHING =====
+function switchTab(i){
+  document.querySelectorAll('.tab').forEach(function(t,j){t.classList.toggle('active',j===i);});
+  document.querySelectorAll('.tab-content').forEach(function(t,j){t.classList.toggle('active',j===i);});
+}
+
+// ===== DRAG & DROP =====
+var dz=document.getElementById('dropZone');
+dz.addEventListener('dragenter',function(ev){ev.preventDefault();dz.classList.add('dragover');});
+dz.addEventListener('dragover',function(ev){ev.preventDefault();dz.classList.add('dragover');});
+dz.addEventListener('dragleave',function(ev){ev.preventDefault();dz.classList.remove('dragover');});
+dz.addEventListener('drop',function(ev){ev.preventDefault();dz.classList.remove('dragover');var f=ev.dataTransfer.files[0];if(f)processFile(f);});
+
+// ===== HELPERS =====
+function pct(n,d){return d?((n/d)*100).toFixed(1)+'%':'0%';}
+function esc(s){if(s===null||s===undefined)return '';var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
+function str(v){if(v===null||v===undefined)return '';return String(v).trim();}
+function norm(s){if(s===null||s===undefined)return '';return String(s).replace(/[\u00A0\u202F\u2000-\u200B\uFEFF]/g,' ').replace(/\s+/g,' ').trim();}
+function isTracked(r,col){if(!col)return false;var v=r[col];if(typeof v==='boolean')return v;return str(v).toUpperCase()==='TRUE';}
+function hasMilestone(val){var v=str(val);return !(!v||v==='0'||v==='0.0'||v==='null'||v==='undefined');}
+function cleanKeys(data){
+  if(!data||!data.length)return data;
+  var origKeys=Object.keys(data[0]);var map={};
+  for(var k=0;k<origKeys.length;k++){var cleaned=norm(origKeys[k]);if(cleaned!==origKeys[k])map[origKeys[k]]=cleaned;}
+  if(Object.keys(map).length===0)return data;
+  for(var i=0;i<data.length;i++){for(var old in map){if(data[i].hasOwnProperty(old)){data[i][map[old]]=data[i][old];delete data[i][old];}}}
+  return data;
+}
+function findCol(data,names){
+  var keys=Object.keys(data[0]);
+  for(var i=0;i<names.length;i++){for(var j=0;j<keys.length;j++){if(keys[j]===names[i])return keys[j];}}
+  for(var i=0;i<names.length;i++){var n=norm(names[i]).toLowerCase();for(var j=0;j<keys.length;j++){if(norm(keys[j]).toLowerCase()===n)return keys[j];}}
+  for(var i=0;i<names.length;i++){var lower=norm(names[i]).toLowerCase();for(var j=0;j<keys.length;j++){if(norm(keys[j]).toLowerCase().indexOf(lower)>=0)return keys[j];}}
+  return null;
+}
+
+// ===== DESTROY AND RECREATE CHART CANVAS =====
+function destroyChart(id){
+  if(_charts[id]){_charts[id].destroy();delete _charts[id];}
+  var old=document.getElementById(id);
+  if(old){var parent=old.parentElement;var c=document.createElement('canvas');c.id=id;parent.replaceChild(c,old);}
+}
+
+// ===== POWER QUERY ENGINE =====
+function isRawData(data){
+  var hasPickupCity=!!findCol(data,['Pickup City State']);
+  var hasLanes=!!findCol(data,['Lanes','Lane']);
+  return hasPickupCity&&!hasLanes;
+}
+
+function powerQueryTransform(rawData){
+  var cCarrier=findCol(rawData,['Carrier Name']);
+  var cBOL=findCol(rawData,['Bill of Lading']);
+  var cOrder=findCol(rawData,['Order Number']);
+  var cTracked=findCol(rawData,['Tracked']);
+  var cConnType=findCol(rawData,['Connection Type']);
+  var cTrackMethod=findCol(rawData,['Tracking Method']);
+  var cActiveEq=findCol(rawData,['Active Equipment ID']);
+  var cHistEq=findCol(rawData,['Historical Equipment ID']);
+  var cPickupCity=findCol(rawData,['Pickup City State']);
+  var cDestCity=findCol(rawData,['Final Destination City State']);
+  var cPickupName=findCol(rawData,['Pickup Name']);
+  var cDestName=findCol(rawData,['Final Destination Name']);
+  var cPickupCountry=findCol(rawData,['Pickup Country']);
+  var cDestCountry=findCol(rawData,['Final Destination Country']);
+  var cPickupAppt=findCol(rawData,['Pickup Appointement Window (UTC)']);
+  var cDelivAppt=findCol(rawData,['Delivery Appointement Window (UTC)']);
+  var cShipCreated=findCol(rawData,['Shipment Created (UTC)']);
+  var cTrackStart=findCol(rawData,['Tracking Window Start (UTC)']);
+  var cTrackEnd=findCol(rawData,['Tracking Window End (UTC)']);
+  var cM1=findCol(rawData,['Pickup Arrival Milestone (UTC)']);
+  var cM2=findCol(rawData,['Pickup Departure Milestone (UTC)']);
+  var cM3=findCol(rawData,['Final Destination Arrival Milestone (UTC)']);
+  var cM4=findCol(rawData,['Final Destination Departure Milestone (UTC)']);
+  var cFinalStatus=findCol(rawData,['Final Status Reason']);
+  var cTrackError=findCol(rawData,['Tracking Error']);
+
+  var processed=[];
+  for(var i=0;i<rawData.length;i++){
+    var r=rawData[i];
+    var m1Hit=hasMilestone(r[cM1]),m2Hit=hasMilestone(r[cM2]),m3Hit=hasMilestone(r[cM3]),m4Hit=hasMilestone(r[cM4]);
+    var msCount=(m1Hit?1:0)+(m2Hit?1:0)+(m3Hit?1:0)+(m4Hit?1:0);
+    var trackedStatus=msCount===4?'Full Tracked':msCount>0?'Partial Tracked':'Tracked with 0 milestones';
+    var achieved=[],missed=[];
+    if(m1Hit)achieved.push('m1');else missed.push('m1');
+    if(m2Hit)achieved.push('m2');else missed.push('m2');
+    if(m3Hit)achieved.push('m3');else missed.push('m3');
+    if(m4Hit)achieved.push('m4');else missed.push('m4');
+    var missedStr=missed.length===0?'Fully Tracked':missed.join(', ');
+    var p44;
+    if(msCount===4)p44='Full Tracked';
+    else if(msCount>0)p44='Partial Tracked';
+    else{var te=str(r[cTrackError]);p44=te||'Tracked with 0 milestones';}
+    var pickupCS=str(r[cPickupCity]),destCS=str(r[cDestCity]);
+    var lanes=(pickupCS&&destCS)?pickupCS+' -> '+destCS:'Unknown';
+    var pickupLoc=[str(r[cPickupName]),pickupCS,str(r[cPickupCountry])].filter(function(x){return x;}).join(',');
+    var destLoc=[str(r[cDestName]),destCS,str(r[cDestCountry])].filter(function(x){return x;}).join(',');
+
+    var row={};
+    row['Carrier Name']=str(r[cCarrier]);row['Bill of Lading']=str(r[cBOL]);row['Order Number']=str(r[cOrder]);
+    row['Tracked']=str(r[cTracked]);row['Connection Type']=str(r[cConnType]);row['Tracking Method']=str(r[cTrackMethod]);
+    row['Active Equipment ID']=str(r[cActiveEq]);row['Historical Equipment ID']=str(r[cHistEq]);
+    row['Lanes']=lanes;row['Pickup Location']=pickupLoc;row['Destination Location']=destLoc;
+    row['Pickup Appointement Window (UTC)']=str(r[cPickupAppt]);row['Delivery Appointement Window (UTC)']=str(r[cDelivAppt]);
+    row['Shipment Created (UTC)']=str(r[cShipCreated]);row['Tracking Window Start (UTC)']=str(r[cTrackStart]);row['Tracking Window End (UTC)']=str(r[cTrackEnd]);
+    row['Pickup Arrival Milestone (UTC)']=str(r[cM1]);row['Pickup Departure Milestone (UTC)']=str(r[cM2]);
+    row['Final Destination Arrival Milestone (UTC)']=str(r[cM3]);row['Final Destination Departure Milestone (UTC)']=str(r[cM4]);
+    row['Final Status Reason']=str(r[cFinalStatus]);row['Tracked Status']=trackedStatus;
+    row['Milestone Achieved']=achieved.join(', ');row['Milestone Missed']=missedStr;row['p44 Analysis']=p44;
+    processed.push(row);
+  }
+  return processed;
+}
+
+// ===== PROCESS UPLOADED FILE =====
+function processFile(file){
+  if(!file)return;
+  var msg=document.getElementById('uploadMsg');
+  msg.innerHTML='<span style="color:#0052CC;">Reading '+esc(file.name)+'...</span>';
+  var reader=new FileReader();
+  reader.onerror=function(){msg.innerHTML='<span style="color:#FF5630;">Failed to read file</span>';};
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(e.target.result,{type:'array',cellDates:false,raw:false});
+      var sheet=null,sheetName='';
+      for(var i=0;i<wb.SheetNames.length;i++){
+        if(norm(wb.SheetNames[i]).toLowerCase()==='data analysis'){sheet=wb.Sheets[wb.SheetNames[i]];sheetName=wb.SheetNames[i];break;}
+      }
+      if(!sheet){var maxRows=0;for(var i=0;i<wb.SheetNames.length;i++){var d=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[i]],{defval:''});if(d.length>maxRows){maxRows=d.length;sheet=wb.Sheets[wb.SheetNames[i]];sheetName=wb.SheetNames[i];}}}
+      if(!sheet){msg.innerHTML='<span style="color:#FF5630;">No usable sheet found</span>';return;}
+
+      var data=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});
+      if(!data.length){msg.innerHTML='<span style="color:#FF5630;">Sheet is empty</span>';return;}
+      data=cleanKeys(data);
+      var firstKey=Object.keys(data[0])[0];
+      if(firstKey===''||firstKey==='__EMPTY'){for(var i=0;i<data.length;i++)delete data[i][firstKey];}
+
+      var dataType='processed';
+      if(isRawData(data)){
+        dataType='raw';
+        // Extract customer name before transform
+        var cCust=findCol(data,['Customer Tenant Name','Customer Name','Tenant Name']);
+        if(cCust){for(var ci=0;ci<data.length;ci++){var cv=str(data[ci][cCust]);if(cv){_customerName=cv.replace(/\s*-\s*PROD\s*$/i,'').trim();break;}}}
+        data=powerQueryTransform(data);
+      } else {
+        _customerName='';
+      }
+
+      msg.innerHTML='<span style="color:#36B37E;">Loaded '+data.length+' rows ('+dataType+')</span>';
+      _allData=data;_fileName=file.name.replace(/\.xlsx?$/i,'');_sheetName=sheetName;
+
+      setTimeout(function(){
+        try{
+          populateFilters();
+          applyFilters();
+          document.getElementById('uploadPage').style.display='none';
+          document.getElementById('dashPage').style.display='block';
+        }catch(err2){msg.innerHTML='<span style="color:#FF5630;">Dashboard error: '+esc(err2.message)+'</span>';console.error(err2);}
+      },100);
+    }catch(err){msg.innerHTML='<span style="color:#FF5630;">Parse error: '+esc(err.message)+'</span>';console.error(err);}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ===== POPULATE FILTER DROPDOWNS (from full dataset) =====
+function populateFilters(){
+  var carriers={},trackeds={},milestones={};
+  var cCarrier=findCol(_allData,['Carrier Name']);
+  var cMissed=findCol(_allData,['Milestone Missed']);
+  var cTracked=findCol(_allData,['Tracked']);
+  for(var i=0;i<_allData.length;i++){
+    var c=str(_allData[i][cCarrier]);if(c)carriers[c]=1;
+    var t=str(_allData[i][cTracked]);if(t)trackeds[t]=1;
+    var m=str(_allData[i][cMissed]);if(m)milestones[m]=1;
+  }
+  fillSelect('gfCarrier',carriers,'All Carriers');
+  fillSelect('gfTracked',trackeds,'All Tracked');
+  fillSelect('gfMilestone',milestones,'All Milestones');
+}
+function fillSelect(id,map,allLabel){
+  var sel=document.getElementById(id);
+  var keys=[];for(var k in map)keys.push(k);keys.sort();
+  sel.innerHTML='<option value="">'+allLabel+'</option>';
+  for(var i=0;i<keys.length;i++){var o=document.createElement('option');o.value=keys[i];o.text=keys[i];sel.add(o);}
+}
+function resetFilters(){
+  document.getElementById('gfCarrier').value='';
+  document.getElementById('gfTracked').value='';
+  document.getElementById('gfMilestone').value='';
+  applyFilters();
+}
+
+// ===== APPLY FILTERS & REBUILD DASHBOARD =====
+function applyFilters(){
+  var fCarrier=document.getElementById('gfCarrier').value;
+  var fTracked=document.getElementById('gfTracked').value;
+  var fMilestone=document.getElementById('gfMilestone').value;
+
+  var cCarrier=findCol(_allData,['Carrier Name']);
+  var cTracked=findCol(_allData,['Tracked']);
+  var cMissed=findCol(_allData,['Milestone Missed']);
+
+  var filtered=[];
+  for(var i=0;i<_allData.length;i++){
+    var r=_allData[i];
+    if(fCarrier&&str(r[cCarrier])!==fCarrier)continue;
+    if(fTracked&&str(r[cTracked])!==fTracked)continue;
+    if(fMilestone&&str(r[cMissed])!==fMilestone)continue;
+    filtered.push(r);
+  }
+
+  var countEl=document.getElementById('filterCount');
+  if(filtered.length===_allData.length){countEl.textContent='';}
+  else{countEl.textContent='Showing '+filtered.length+' of '+_allData.length+' shipments';}
+
+  buildDashboard(filtered,_fileName,_sheetName);
+}
+
+// ===== BUILD DASHBOARD =====
+function buildDashboard(data,fileName,loadedSheet){
+  var T=data.length;
+  var cCarrier=findCol(data.length?data:_allData,['Carrier Name','carrier_name','Carrier']);
+  var cTracked=findCol(data.length?data:_allData,['Tracked']);
+  var cStatus=findCol(data.length?data:_allData,['Tracked Status']);
+  var cMissed=findCol(data.length?data:_allData,['Milestone Missed']);
+  var cLanes=findCol(data.length?data:_allData,['Lanes','Lane']);
+  var cP44=findCol(data.length?data:_allData,['p44 Analysis','P44 Analysis']);
+  var cDate=findCol(data.length?data:_allData,['Shipment Created (UTC)','Shipment Created']);
+
+  // KPIs
+  var tracked=0,full=0,partial=0;
+  for(var i=0;i<T;i++){
+    if(isTracked(data[i],cTracked))tracked++;
+    if(cStatus){var st=str(data[i][cStatus]);if(st==='Full Tracked')full++;else if(st==='Partial Tracked')partial++;}
+  }
+  var untracked=T-tracked;
+  document.getElementById('kTotal').textContent=T;
+  document.getElementById('kTPct').textContent=pct(tracked,T);
+  document.getElementById('kTSub').textContent=tracked+' of '+T;
+  document.getElementById('kFull').textContent=full;
+  document.getElementById('kFullS').textContent=pct(full,T)+' of total';
+  document.getElementById('kPart').textContent=partial;
+  document.getElementById('kPartS').textContent=pct(partial,T)+' of total';
+  document.getElementById('kUnt').textContent=untracked;
+  document.getElementById('kUntS').textContent=pct(untracked,T)+' of total';
+
+  // Header - use customer name if available
+  var displayName=_customerName||fileName;
+  document.getElementById('hTitle').textContent='DQ Report — '+displayName;
+  document.getElementById('hCount').textContent=T+' Shipments';
+  if(cDate){
+    try{
+      var allD=[];for(var i=0;i<T;i++){var d=new Date(data[i][cDate]);if(!isNaN(d.getTime()))allD.push(d);}
+      if(allD.length>1){allD.sort(function(a,b){return a-b;});var mn=allD[0],mx=allD[allD.length-1];var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];document.getElementById('hPeriod').textContent=mo[mn.getMonth()]+' '+mn.getDate()+' - '+mo[mx.getMonth()]+' '+mx.getDate()+', '+mx.getFullYear();}
+    }catch(e){}
+  }
+
+  // ===== DONUT =====
+  destroyChart('cDonut1');
+  _charts['cDonut1']=new Chart(document.getElementById('cDonut1'),{
+    type:'doughnut',
+    data:{labels:['Tracked ('+tracked+')','Untracked ('+untracked+')'],datasets:[{data:[tracked,untracked],backgroundColor:['#36B37E','#FF5630'],borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'right',labels:{font:{size:13},padding:14}}}}
+  });
+
+  // ===== DQ-TRACKING SUMMARY =====
+  destroyChart('cBar1');
+  if(cP44&&T>0){
+    var p44Map={};for(var i=0;i<T;i++){var v=str(data[i][cP44])||'Unknown';p44Map[v]=(p44Map[v]||0)+1;}
+    var sorted=[];for(var k in p44Map)sorted.push([k,p44Map[k]]);sorted.sort(function(a,b){return b[1]-a[1];});
+    var labels=[],vals=[];
+    for(var i=0;i<sorted.length;i++){labels.push(sorted[i][0].length>28?sorted[i][0].substring(0,28)+'...':sorted[i][0]);vals.push(sorted[i][1]);}
+    var cumPct=[],cum=0;for(var i=0;i<vals.length;i++){cum+=vals[i];cumPct.push(+(cum/T*100).toFixed(1));}
+    _charts['cBar1']=new Chart(document.getElementById('cBar1'),{
+      type:'bar',
+      data:{labels:labels,datasets:[
+        {type:'bar',label:'Shipments',data:vals,backgroundColor:'#0052CC',borderRadius:4,yAxisID:'y'},
+        {type:'line',label:'Cumulative %',data:cumPct,borderColor:'#FF5630',backgroundColor:'rgba(255,86,48,0.1)',pointRadius:4,pointBackgroundColor:'#FF5630',tension:0.3,yAxisID:'y1'}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,title:{display:true,text:'Shipments'}},y1:{position:'right',min:0,max:100,title:{display:true,text:'Cumulative %'},grid:{drawOnChartArea:false}}},plugins:{legend:{position:'top',labels:{font:{size:11}}}}}
+    });
+  }
+
+  // ===== CARRIER TRACKING TABLE =====
+  if(cCarrier&&T>0){
+    var cm={};for(var i=0;i<T;i++){var c=str(data[i][cCarrier])||'Unknown';if(!cm[c])cm[c]={t:0,tr:0};cm[c].t++;if(isTracked(data[i],cTracked))cm[c].tr++;}
+    var sorted2=[];for(var k in cm)sorted2.push([k,cm[k]]);sorted2.sort(function(a,b){return b[1].t-a[1].t;});
+    var h='<table><thead><tr><th>Carrier Name</th><th class="num">Total</th><th class="num">Tracked</th><th class="num">Untracked</th><th class="num">Tracked %</th></tr></thead><tbody>';
+    for(var i=0;i<sorted2.length;i++){var k=sorted2[i][0],v=sorted2[i][1];h+='<tr><td>'+esc(k)+'</td><td class="num">'+v.t+'</td><td class="num">'+v.tr+'</td><td class="num">'+(v.t-v.tr)+'</td><td class="num">'+pct(v.tr,v.t)+'</td></tr>';}
+    h+='</tbody></table>';document.getElementById('carrierTable').innerHTML=h;
+  } else {document.getElementById('carrierTable').innerHTML=T===0?'<p style="color:var(--muted);padding:20px;">No data matches current filters</p>':'';}
+
+  // ===== TAB 2: MILESTONE TABLE =====
+  if(cCarrier&&cMissed&&T>0){
+    var cm2={};for(var i=0;i<T;i++){var c=str(data[i][cCarrier])||'Unknown',m=str(data[i][cMissed]);if(!cm2[c])cm2[c]={total:0,full:0,patterns:{}};cm2[c].total++;if(m==='Fully Tracked')cm2[c].full++;else if(m){cm2[c].patterns[m]=(cm2[c].patterns[m]||0)+1;}}
+    var sorted3=[];for(var k in cm2)sorted3.push([k,cm2[k]]);sorted3.sort(function(a,b){return(b[1].total-b[1].full)-(a[1].total-a[1].full);});
+    var h2='<table><thead><tr><th>Carrier Name</th><th class="num">Total</th><th class="num">Missed</th><th class="num">Missed %</th><th class="num">Contrib %</th><th>Pattern</th><th class="num">Count</th></tr></thead><tbody>';
+    for(var i=0;i<sorted3.length;i++){
+      var k=sorted3[i][0],v=sorted3[i][1],missed=v.total-v.full;
+      var patterns=[];for(var p in v.patterns)patterns.push([p,v.patterns[p]]);patterns.sort(function(a,b){return b[1]-a[1];});
+      if(patterns.length===0){h2+='<tr><td style="font-weight:600">'+esc(k)+'</td><td class="num">'+v.total+'</td><td class="num">0</td><td class="num">0.0%</td><td class="num">'+pct(v.total,T)+'</td><td>-</td><td class="num">0</td></tr>';}
+      else{for(var j=0;j<patterns.length;j++){h2+='<tr>';if(j===0)h2+='<td rowspan="'+patterns.length+'" style="font-weight:600;vertical-align:top">'+esc(k)+'</td><td rowspan="'+patterns.length+'" class="num" style="vertical-align:top">'+v.total+'</td><td rowspan="'+patterns.length+'" class="num" style="vertical-align:top">'+missed+'</td><td rowspan="'+patterns.length+'" class="num" style="vertical-align:top">'+pct(missed,v.total)+'</td><td rowspan="'+patterns.length+'" class="num" style="vertical-align:top">'+pct(v.total,T)+'</td>';h2+='<td><span style="background:#FFF0B3;padding:2px 6px;border-radius:4px;font-size:11px">'+esc(patterns[j][0])+'</span></td><td class="num">'+patterns[j][1]+'</td></tr>';}}
+    }
+    h2+='</tbody></table>';document.getElementById('msTable').innerHTML=h2;
+
+    // Milestone chart
+    destroyChart('cMs');
+    var chartEntries=[];for(var i=0;i<sorted3.length;i++){if(sorted3[i][1].total-sorted3[i][1].full>0)chartEntries.push(sorted3[i]);if(chartEntries.length>=20)break;}
+    if(chartEntries.length>0){
+      _charts['cMs']=new Chart(document.getElementById('cMs'),{
+        type:'bar',
+        data:{labels:chartEntries.map(function(d){return d[0].length>22?d[0].substring(0,22)+'...':d[0];}),
+          datasets:[{label:'Fully Tracked',data:chartEntries.map(function(d){return d[1].full;}),backgroundColor:'#36B37E'},{label:'Milestones Missed',data:chartEntries.map(function(d){return d[1].total-d[1].full;}),backgroundColor:'#FF991F'}]},
+        options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',scales:{x:{stacked:true},y:{stacked:true,ticks:{font:{size:10}}}},plugins:{legend:{position:'top'}}}
+      });
+    }
+  } else {document.getElementById('msTable').innerHTML='<p style="color:var(--muted);padding:20px;">'+(T===0?'No data matches current filters':'Columns not found')+'</p>';destroyChart('cMs');}
+
+  // ===== CARRIER-LANE DISTRIBUTION (with milestone breakdown) =====
+  if(cCarrier&&cLanes&&cStatus&&cMissed&&T>0){
+    var clKey=function(c,l){return c+'||'+l;};
+    var clMap={};
+    for(var i=0;i<T;i++){
+      var c=str(data[i][cCarrier])||'Unknown',l=str(data[i][cLanes])||'Unknown',s=str(data[i][cStatus]),m=str(data[i][cMissed]);
+      var k=clKey(c,l);
+      if(!clMap[k])clMap[k]={carrier:c,lane:l,t:0,f:0,p:0,u:0,m1:0,m2:0,m3:0,m4:0};clMap[k].t++;
+      if(s==='Full Tracked')clMap[k].f++;else if(s==='Partial Tracked')clMap[k].p++;else clMap[k].u++;
+      if(m!=='Fully Tracked'){var parts=m.split(',');for(var pi=0;pi<parts.length;pi++){var mp=parts[pi].trim();if(mp==='m1')clMap[k].m1++;else if(mp==='m2')clMap[k].m2++;else if(mp==='m3')clMap[k].m3++;else if(mp==='m4')clMap[k].m4++;}}
+    }
+    var clArr=[];for(var k in clMap)clArr.push(clMap[k]);clArr.sort(function(a,b){return a.carrier.localeCompare(b.carrier)||b.t-a.t;});
+    var h3='<table><thead><tr><th>Carrier Name</th><th>Lane</th><th class="num">Shipments</th><th class="num">Full Tracked</th><th class="num">Partial Tracked</th><th class="num">0 Milestones</th><th class="num">M1 Missed</th><th class="num">M2 Missed</th><th class="num">M3 Missed</th><th class="num">M4 Missed</th><th class="num">Tracked %</th></tr></thead><tbody>';
+    for(var i=0;i<clArr.length;i++){var v=clArr[i];h3+='<tr><td>'+esc(v.carrier)+'</td><td>'+esc(v.lane)+'</td><td class="num">'+v.t+'</td><td class="num">'+v.f+'</td><td class="num">'+v.p+'</td><td class="num">'+v.u+'</td><td class="num">'+v.m1+'</td><td class="num">'+v.m2+'</td><td class="num">'+v.m3+'</td><td class="num">'+v.m4+'</td><td class="num">'+pct(v.f+v.p,v.t)+'</td></tr>';}
+    h3+='</tbody></table>';document.getElementById('laneTable').innerHTML=h3;
+  } else {document.getElementById('laneTable').innerHTML='<p style="color:var(--muted);padding:20px;">'+(T===0?'No data matches current filters':'Required columns not found')+'</p>';}
+
+  // ===== TAB 3 =====
+  buildPivots(data,T,cCarrier,cTracked,cMissed,cLanes,cP44);
+  buildProcessTable(data,cCarrier);
+}
+
+// ===== PIVOT TABLES =====
+function buildPivots(data,T,cCarrier,cTracked,cMissed,cLanes,cP44){
+  var row1='';
+  if(cTracked&&T>0){
+    var trMap={};for(var i=0;i<T;i++){var v=String(data[i][cTracked]);trMap[v]=(trMap[v]||0)+1;}
+    row1+='<div class="card"><h3><span class="dot" style="background:var(--blue)"></span>DQ-Tracking</h3><table><thead><tr><th>Tracked</th><th class="num">Shipments</th><th class="num">%</th></tr></thead><tbody>';
+    var trArr=[];for(var k in trMap)trArr.push([k,trMap[k]]);trArr.sort(function(a,b){return b[1]-a[1];});
+    for(var i=0;i<trArr.length;i++){row1+='<tr><td>'+trArr[i][0]+'</td><td class="num">'+trArr[i][1]+'</td><td class="num">'+pct(trArr[i][1],T)+'</td></tr>';}
+    row1+='<tr class="total-row"><td>Grand Total</td><td class="num">'+T+'</td><td class="num">100.0%</td></tr></tbody></table></div>';
+  }
+  if(cMissed&&T>0){
+    var m1=0,m2=0,m3=0,m4=0,patterns={};
+    for(var i=0;i<T;i++){var v=str(data[i][cMissed]);patterns[v]=(patterns[v]||0)+1;if(v==='Fully Tracked')continue;var parts=v.split(',');for(var j=0;j<parts.length;j++){var p=parts[j].trim();if(p==='m1')m1++;else if(p==='m2')m2++;else if(p==='m3')m3++;else if(p==='m4')m4++;}}
+    row1+='<div class="card"><h3><span class="dot" style="background:var(--green)"></span>DQ-Milestone</h3>';
+    row1+='<table><thead><tr><th>Milestone</th><th>Description</th><th class="num">Missed</th><th class="num">%</th></tr></thead><tbody>';
+    row1+='<tr><td>M1</td><td>Pickup Arrival</td><td class="num">'+m1+'</td><td class="num">'+pct(m1,T)+'</td></tr>';
+    row1+='<tr><td>M2</td><td>Pickup Departure</td><td class="num">'+m2+'</td><td class="num">'+pct(m2,T)+'</td></tr>';
+    row1+='<tr><td>M3</td><td>Dest Arrival</td><td class="num">'+m3+'</td><td class="num">'+pct(m3,T)+'</td></tr>';
+    row1+='<tr><td>M4</td><td>Dest Departure</td><td class="num">'+m4+'</td><td class="num">'+pct(m4,T)+'</td></tr>';
+    row1+='</tbody></table>';
+    row1+='<p style="font-size:10px;color:var(--muted);margin:8px 0 4px">Pattern Breakdown</p><table><thead><tr><th>Pattern</th><th class="num">Count</th><th class="num">%</th></tr></thead><tbody>';
+    var pArr=[];for(var k in patterns)pArr.push([k,patterns[k]]);pArr.sort(function(a,b){return b[1]-a[1];});
+    for(var i=0;i<pArr.length;i++){row1+='<tr><td>'+esc(pArr[i][0])+'</td><td class="num">'+pArr[i][1]+'</td><td class="num">'+pct(pArr[i][1],T)+'</td></tr>';}
+    row1+='<tr class="total-row"><td>Total</td><td class="num">'+T+'</td><td class="num">100.0%</td></tr></tbody></table></div>';
+  }
+  if(cP44&&T>0){
+    var pm={};for(var i=0;i<T;i++){var v=str(data[i][cP44])||'Unknown';pm[v]=(pm[v]||0)+1;}
+    var pmArr=[];for(var k in pm)pmArr.push([k,pm[k]]);pmArr.sort(function(a,b){return b[1]-a[1];});
+    row1+='<div class="card"><h3><span class="dot" style="background:var(--orange)"></span>P44 RCA</h3><table><thead><tr><th>Analysis</th><th class="num">Count</th><th class="num">%</th></tr></thead><tbody>';
+    for(var i=0;i<pmArr.length;i++){row1+='<tr><td>'+esc(pmArr[i][0])+'</td><td class="num">'+pmArr[i][1]+'</td><td class="num">'+pct(pmArr[i][1],T)+'</td></tr>';}
+    row1+='<tr class="total-row"><td>Grand Total</td><td class="num">'+T+'</td><td class="num">100.0%</td></tr></tbody></table></div>';
+  }
+  document.getElementById('pivotRow1').innerHTML=row1;
+
+  var row2='';
+  if(cCarrier&&cTracked&&T>0){
+    var tc={};for(var i=0;i<T;i++){var c=str(data[i][cCarrier])||'?',t=String(data[i][cTracked]),key=t+'||'+c;if(!tc[key])tc[key]={t:t,c:c,n:0};tc[key].n++;}
+    var tcArr=[];for(var k in tc)tcArr.push(tc[k]);tcArr.sort(function(a,b){return(b.t.toUpperCase()==='TRUE'?1:0)-(a.t.toUpperCase()==='TRUE'?1:0)||b.n-a.n;});
+    row2+='<div class="card"><h3><span class="dot" style="background:var(--accent)"></span>Tracking by Carrier</h3><div class="scroll-wrap" style="max-height:350px"><table><thead><tr><th>Tracked</th><th>Carrier</th><th class="num">Count</th><th class="num">%</th></tr></thead><tbody>';
+    for(var i=0;i<tcArr.length;i++){row2+='<tr><td>'+tcArr[i].t+'</td><td>'+esc(tcArr[i].c)+'</td><td class="num">'+tcArr[i].n+'</td><td class="num">'+pct(tcArr[i].n,T)+'</td></tr>';}
+    row2+='<tr class="total-row"><td>Total</td><td></td><td class="num">'+T+'</td><td class="num">100.0%</td></tr></tbody></table></div></div>';
+  }
+  if(cCarrier&&cMissed&&T>0){
+    var cm3={};for(var i=0;i<T;i++){var c=str(data[i][cCarrier])||'?',m=str(data[i][cMissed]),key=c+'||'+m;if(!cm3[key])cm3[key]={c:c,m:m,n:0};cm3[key].n++;}
+    var byC={},cTot={};for(var k in cm3){var v=cm3[k];if(!byC[v.c])byC[v.c]=[];byC[v.c].push(v);}
+    for(var i=0;i<T;i++){var c=str(data[i][cCarrier])||'?';cTot[c]=(cTot[c]||0)+1;}
+    var cKeys=[];for(var k in byC)cKeys.push(k);cKeys.sort(function(a,b){return(cTot[b]||0)-(cTot[a]||0);});
+    row2+='<div class="card"><h3><span class="dot" style="background:var(--purple)"></span>Carrier x Milestone Missed</h3><div class="scroll-wrap" style="max-height:350px"><table><thead><tr><th>Carrier</th><th>Milestone Missed</th><th class="num">Count</th><th class="num">%</th></tr></thead><tbody>';
+    for(var ci=0;ci<cKeys.length;ci++){var c=cKeys[ci],arr=byC[c];arr.sort(function(a,b){return b.n-a.n;});for(var j=0;j<arr.length;j++){row2+='<tr><td>'+esc(arr[j].c)+'</td><td>'+esc(arr[j].m)+'</td><td class="num">'+arr[j].n+'</td><td class="num">'+pct(arr[j].n,cTot[c])+'</td></tr>';}row2+='<tr class="subtotal-row"><td>'+esc(c)+' Total</td><td></td><td class="num">'+cTot[c]+'</td><td class="num">100.0%</td></tr>';}
+    row2+='<tr class="total-row"><td>Grand Total</td><td></td><td class="num">'+T+'</td><td class="num">100.0%</td></tr></tbody></table></div></div>';
+  }
+  document.getElementById('pivotRow2').innerHTML=row2;
+
+  if(cLanes&&cCarrier&&cMissed&&T>0){
+    var lm={};for(var i=0;i<T;i++){var l=str(data[i][cLanes])||'?',c=str(data[i][cCarrier])||'?',m=str(data[i][cMissed]),key=l+'||'+c+'||'+m;if(!lm[key])lm[key]={l:l,c:c,m:m,n:0};lm[key].n++;}
+    var lTot={};for(var i=0;i<T;i++){var l=str(data[i][cLanes])||'?';lTot[l]=(lTot[l]||0)+1;}
+    var byL={};for(var k in lm){var v=lm[k];if(!byL[v.l])byL[v.l]=[];byL[v.l].push(v);}
+    var lKeys=[];for(var k in byL)lKeys.push(k);lKeys.sort(function(a,b){return(lTot[b]||0)-(lTot[a]||0);});if(lKeys.length>50)lKeys=lKeys.slice(0,50);
+    var lh='<h3><span class="dot" style="background:var(--red)"></span>Lane Analysis (Lane > Carrier > Milestone Missed)</h3><div class="scroll-wrap" style="max-height:450px"><table><thead><tr><th>Lane</th><th>Carrier</th><th>Milestone Missed</th><th class="num">Count</th><th class="num">%</th></tr></thead><tbody>';
+    for(var li=0;li<lKeys.length;li++){var l=lKeys[li],arr=byL[l];arr.sort(function(a,b){return b.n-a.n;});for(var j=0;j<arr.length;j++){lh+='<tr><td>'+esc(arr[j].l)+'</td><td>'+esc(arr[j].c)+'</td><td>'+esc(arr[j].m)+'</td><td class="num">'+arr[j].n+'</td><td class="num">'+pct(arr[j].n,lTot[l])+'</td></tr>';}}
+    lh+='</tbody></table></div>';document.getElementById('pivotLane').innerHTML=lh;
+  } else {document.getElementById('pivotLane').innerHTML='';}
+}
+
+// ===== PROCESS TABLE =====
+function buildProcessTable(data,cCarrier){
+  if(!data.length){document.getElementById('processWrap').innerHTML='<p style="color:var(--muted);padding:20px;">No data matches current filters</p>';return;}
+  var cols=Object.keys(data[0]).filter(function(c){return c!=='Milestone Completeness'&&c!=='Milstone Completeness';});
+  var h='<table id="pTable"><thead><tr>';
+  for(var i=0;i<cols.length;i++){h+='<th>'+esc(cols[i])+'</th>';}
+  h+='</tr></thead><tbody>';
+  for(var i=0;i<data.length;i++){h+='<tr>';for(var j=0;j<cols.length;j++){h+='<td>'+esc(String(data[i][cols[j]]===undefined?'':data[i][cols[j]]))+'</td>';}h+='</tr>';}
+  h+='</tbody></table>';
+  document.getElementById('processWrap').innerHTML=h;
+}
+
+function filterProcessTable(){
+  var s=document.getElementById('searchBox').value.toLowerCase();
+  var rows=document.querySelectorAll('#pTable tbody tr');
+  for(var i=0;i<rows.length;i++){var txt=rows[i].textContent.toLowerCase();rows[i].style.display=(!s||txt.indexOf(s)>=0)?'':'none';}
+}
+
+function exportCSV(){
+  var t=document.getElementById('pTable');if(!t)return;
+  var hdr=[];var ths=t.querySelectorAll('thead th');for(var i=0;i<ths.length;i++)hdr.push('"'+ths[i].textContent.replace(/"/g,'""')+'"');
+  var rows=t.querySelectorAll('tbody tr');var csv=hdr.join(',')+'\n';
+  for(var i=0;i<rows.length;i++){if(rows[i].style.display==='none')continue;var cells=rows[i].querySelectorAll('td');var line=[];for(var j=0;j<cells.length;j++)line.push('"'+cells[j].textContent.replace(/"/g,'""')+'"');csv+=line.join(',')+'\n';}
+  var blob=new Blob([csv],{type:'text/csv'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='DQ_Report.csv';a.click();
+}
+
+// ===== EXPORT ALL — multi-sheet Excel with all pivots + data =====
+function exportAll(){
+  // Get currently filtered data
+  var fCarrier=document.getElementById('gfCarrier').value;
+  var fTracked=document.getElementById('gfTracked').value;
+  var fMilestone=document.getElementById('gfMilestone').value;
+  var cCarrier=findCol(_allData,['Carrier Name']);
+  var cTracked=findCol(_allData,['Tracked']);
+  var cMissed=findCol(_allData,['Milestone Missed']);
+  var cStatus=findCol(_allData,['Tracked Status']);
+  var cLanes=findCol(_allData,['Lanes']);
+  var cP44=findCol(_allData,['p44 Analysis']);
+
+  var data=[];
+  for(var i=0;i<_allData.length;i++){
+    var r=_allData[i];
+    if(fCarrier&&str(r[cCarrier])!==fCarrier)continue;
+    if(fTracked&&str(r[cTracked])!==fTracked)continue;
+    if(fMilestone&&str(r[cMissed])!==fMilestone)continue;
+    data.push(r);
+  }
+  var T=data.length;
+  var wb=XLSX.utils.book_new();
+
+  // Sheet 1: DQ-Tracking pivot
+  var s1=[];
+  var trMap={};for(var i=0;i<T;i++){var v=String(data[i][cTracked]);trMap[v]=(trMap[v]||0)+1;}
+  for(var k in trMap)s1.push({Tracked:k,Shipments:trMap[k],'%':+(trMap[k]/T*100).toFixed(1)});
+  s1.push({Tracked:'Grand Total',Shipments:T,'%':100});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(s1),'DQ-Tracking');
+
+  // Sheet 2: DQ-Milestone pivot
+  var s2m=[];
+  var m1=0,m2=0,m3=0,m4=0,patterns={};
+  for(var i=0;i<T;i++){var v=str(data[i][cMissed]);patterns[v]=(patterns[v]||0)+1;if(v==='Fully Tracked')continue;var parts=v.split(',');for(var j=0;j<parts.length;j++){var p=parts[j].trim();if(p==='m1')m1++;else if(p==='m2')m2++;else if(p==='m3')m3++;else if(p==='m4')m4++;}}
+  s2m.push({Milestone:'M1',Description:'Pickup Arrival',Missed:m1,'%':+(m1/T*100).toFixed(1)});
+  s2m.push({Milestone:'M2',Description:'Pickup Departure',Missed:m2,'%':+(m2/T*100).toFixed(1)});
+  s2m.push({Milestone:'M3',Description:'Dest Arrival',Missed:m3,'%':+(m3/T*100).toFixed(1)});
+  s2m.push({Milestone:'M4',Description:'Dest Departure',Missed:m4,'%':+(m4/T*100).toFixed(1)});
+  s2m.push({});
+  s2m.push({Milestone:'Pattern Breakdown'});
+  var pArr=[];for(var k in patterns)pArr.push([k,patterns[k]]);pArr.sort(function(a,b){return b[1]-a[1];});
+  for(var i=0;i<pArr.length;i++){s2m.push({Milestone:pArr[i][0],Missed:pArr[i][1],'%':+(pArr[i][1]/T*100).toFixed(1)});}
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(s2m),'DQ-Milestone');
+
+  // Sheet 3: P44 RCA
+  var s3=[];
+  var pm={};for(var i=0;i<T;i++){var v=str(data[i][cP44])||'Unknown';pm[v]=(pm[v]||0)+1;}
+  var pmArr=[];for(var k in pm)pmArr.push([k,pm[k]]);pmArr.sort(function(a,b){return b[1]-a[1];});
+  for(var i=0;i<pmArr.length;i++){s3.push({Analysis:pmArr[i][0],Count:pmArr[i][1],'%':+(pmArr[i][1]/T*100).toFixed(1)});}
+  s3.push({Analysis:'Grand Total',Count:T,'%':100});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(s3),'P44 RCA');
+
+  // Sheet 4: Carrier Tracking
+  var s4=[];
+  var cm={};for(var i=0;i<T;i++){var c=str(data[i][cCarrier])||'Unknown';if(!cm[c])cm[c]={t:0,tr:0};cm[c].t++;if(str(data[i][cTracked]).toUpperCase()==='TRUE')cm[c].tr++;}
+  var cmArr=[];for(var k in cm)cmArr.push([k,cm[k]]);cmArr.sort(function(a,b){return b[1].t-a[1].t;});
+  for(var i=0;i<cmArr.length;i++){var k=cmArr[i][0],v=cmArr[i][1];s4.push({'Carrier Name':k,Total:v.t,Tracked:v.tr,Untracked:v.t-v.tr,'Tracked %':+(v.tr/v.t*100).toFixed(1)});}
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(s4),'Carrier Tracking');
+
+  // Sheet 5: Carrier x Milestone Missed
+  var s5=[];
+  var cm3={};for(var i=0;i<T;i++){var c=str(data[i][cCarrier])||'?',m=str(data[i][cMissed]),key=c+'||'+m;if(!cm3[key])cm3[key]={c:c,m:m,n:0};cm3[key].n++;}
+  var cTot={};for(var i=0;i<T;i++){var c=str(data[i][cCarrier])||'?';cTot[c]=(cTot[c]||0)+1;}
+  var cm3Arr=[];for(var k in cm3)cm3Arr.push(cm3[k]);cm3Arr.sort(function(a,b){return(cTot[b.c]||0)-(cTot[a.c]||0)||b.n-a.n;});
+  for(var i=0;i<cm3Arr.length;i++){s5.push({Carrier:cm3Arr[i].c,'Milestone Missed':cm3Arr[i].m,Count:cm3Arr[i].n,'%':+(cm3Arr[i].n/(cTot[cm3Arr[i].c]||1)*100).toFixed(1)});}
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(s5),'Carrier x Milestone');
+
+  // Sheet 6: Carrier-Lane Distribution (with milestone breakdown)
+  var s6=[];
+  if(cLanes){
+    var cla={};for(var i=0;i<T;i++){
+      var c=str(data[i][cCarrier])||'Unknown',l=str(data[i][cLanes])||'Unknown',s=str(data[i][cStatus]),m=str(data[i][cMissed]);
+      var ck=c+'||'+l;if(!cla[ck])cla[ck]={c:c,l:l,t:0,f:0,p:0,u:0,m1:0,m2:0,m3:0,m4:0};cla[ck].t++;
+      if(s==='Full Tracked')cla[ck].f++;else if(s==='Partial Tracked')cla[ck].p++;else cla[ck].u++;
+      if(m!=='Fully Tracked'){var parts=m.split(',');for(var pi=0;pi<parts.length;pi++){var mp=parts[pi].trim();if(mp==='m1')cla[ck].m1++;else if(mp==='m2')cla[ck].m2++;else if(mp==='m3')cla[ck].m3++;else if(mp==='m4')cla[ck].m4++;}}
+    }
+    var claArr=[];for(var ck in cla)claArr.push(cla[ck]);claArr.sort(function(a,b){return a.c.localeCompare(b.c)||b.t-a.t;});
+    for(var i=0;i<claArr.length;i++){var v=claArr[i];s6.push({'Carrier Name':v.c,Lane:v.l,Shipments:v.t,'Full Tracked':v.f,'Partial Tracked':v.p,'0 Milestones':v.u,'M1 Missed':v.m1,'M2 Missed':v.m2,'M3 Missed':v.m3,'M4 Missed':v.m4,'Tracked %':+((v.f+v.p)/v.t*100).toFixed(1)});}
+  }
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(s6),'Carrier-Lane Distribution');
+
+  // Sheet 7: Lane > Carrier > Milestone Missed
+  var s7=[];
+  if(cLanes){
+    var lcm={};for(var i=0;i<T;i++){var l=str(data[i][cLanes])||'?',c=str(data[i][cCarrier])||'?',m=str(data[i][cMissed]),key=l+'||'+c+'||'+m;if(!lcm[key])lcm[key]={l:l,c:c,m:m,n:0};lcm[key].n++;}
+    var lTot={};for(var i=0;i<T;i++){var l=str(data[i][cLanes])||'?';lTot[l]=(lTot[l]||0)+1;}
+    var lcmArr=[];for(var k in lcm)lcmArr.push(lcm[k]);lcmArr.sort(function(a,b){return(lTot[b.l]||0)-(lTot[a.l]||0)||b.n-a.n;});
+    for(var i=0;i<lcmArr.length;i++){s7.push({Lane:lcmArr[i].l,Carrier:lcmArr[i].c,'Milestone Missed':lcmArr[i].m,Count:lcmArr[i].n,'%':+(lcmArr[i].n/(lTot[lcmArr[i].l]||1)*100).toFixed(1)});}
+  }
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(s7),'Lane-Carrier-Milestone');
+
+  // Sheet 8: Full Data
+  var s8cols=Object.keys(data[0]).filter(function(c){return c!=='Milestone Completeness'&&c!=='Milstone Completeness';});
+  var s8=[];
+  for(var i=0;i<data.length;i++){var row={};for(var j=0;j<s8cols.length;j++){row[s8cols[j]]=data[i][s8cols[j]]===undefined?'':data[i][s8cols[j]];}s8.push(row);}
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(s8),'Full Data');
+
+  // Write and download
+  var wbOut=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  var blob=new Blob([wbOut],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  var fn=(_customerName||_fileName||'DQ_Report')+'_Export.xlsx';
+  a.download=fn;a.click();
+}
+</script>
+</body>
+</html>
